@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/Defl8/gorrent/internal/bencode"
 )
-
 
 func main() {
 	// byteString := "16:thisshoulddecode"
@@ -21,16 +21,39 @@ func main() {
 	//
 	// fmt.Printf("Decoded Info:\nLength: %d\nContents: %s\n\n", decodedString.Length, decodedString.Contents)
 
+	// byteInt := "i67e"
+	// fmt.Printf("Raw Integer: %s\n\n", byteInt)
+	//
+	// rawBytes := []byte(byteInt)
+	//
+	// decodedInt, err := bencode.DecodeInteger(rawBytes)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	//
+	// fmt.Printf("Decoded Integer: %d\n", *decodedInt)
 
-	byteInt := "i67e"
-	fmt.Printf("Raw Integer: %s\n\n", byteInt)
+	byteList := "li67e4:teste"
+	fmt.Printf("Raw List: %s\n\n", byteList)
 
-	rawBytes := []byte(byteInt)
+	bytes := []byte(byteList)
 
-	decodedInt, err := bencode.DecodeInteger(rawBytes)
+	decodedList, byteCount, err := bencode.DecodeList(bytes)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Decoded Integer: %d\n", *decodedInt)
+	parts := make([]string, 0, len(decodedList.Elements))
+	for _, elem := range decodedList.Elements {
+		switch v := elem.(type){
+		case *int64:
+			parts = append(parts, fmt.Sprintf("%d", *v))
+		case *bencode.BencodeByteString:
+			parts = append(parts, v.Contents)
+		}
+	}
+
+	stringsList := strings.Join(parts, ", ")
+
+	fmt.Printf("Decoded List Contents: %s\nBytes Consumed: %d\n", stringsList, byteCount)
 }
