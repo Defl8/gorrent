@@ -3,6 +3,7 @@ package bencode
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 )
 
@@ -186,6 +187,9 @@ func DecodeDict(data []byte) (*BencodeDict, int, error) {
 	index := 1
 	hasKey := false
 
+	// Make sure there are no duplicat keys
+	keyMemo := []BencodeByteString{}
+
 	var key BencodeByteString
 	for index < len(data) {
 		if data[index] == 'e' {
@@ -199,6 +203,8 @@ func DecodeDict(data []byte) (*BencodeDict, int, error) {
 			if err != nil {
 				return nil, 0, err
 			}
+
+			// Complete dict pair in struct
 			bcodeDict.Pairs[key] = val
 
 			hasKey = false
@@ -211,7 +217,18 @@ func DecodeDict(data []byte) (*BencodeDict, int, error) {
 			if err != nil {
 				return nil, 0, err
 			}
+
 			key = *keyByteString
+
+			// Error if dict has duplicate keys
+			if slices.Contains(keyMemo, key) {
+				return nil, 0, errors.New("Bencode dictionary contains duplicate keys.")
+			}
+
+			// Memoize if the key is not a dupe
+			keyMemo = append(keyMemo, key)
+
+
 			hasKey = true
 			index += bytesConsumed
 		}
@@ -222,11 +239,11 @@ func DecodeDict(data []byte) (*BencodeDict, int, error) {
 func (d BencodeDict) Get(contents string) (BencodeType, error) {
 	byteString := BencodeByteString{Length: int64(len(contents)), Contents: contents}
 
-	obj, ok := d.Pairs[byteString]
+	bCodeType, ok := d.Pairs[byteString]
 
 	if !ok {
 		return nil, errors.New("Key Value pair does not exist in Bencode Dictionary.")
 	}
 
-	return obj, nil
+	return bCodeType, nil
 }
