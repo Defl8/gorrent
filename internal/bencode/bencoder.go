@@ -2,10 +2,12 @@ package bencode
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 )
 
-type BencodeType interface{}
+// TODO: update once Encode functions are in place
+type BencodeType any
 
 type BencodeByteString struct {
 	Length   int64
@@ -13,11 +15,15 @@ type BencodeByteString struct {
 }
 
 type BencodeInteger struct {
-	value int64
+	Value int64
 }
 
 type BencodeList struct {
 	Elements []BencodeType
+}
+
+type BencodeDict struct {
+	Pairs map[BencodeByteString]BencodeType
 }
 
 func DecodeElement(data []byte) (BencodeType, int, error) {
@@ -27,26 +33,32 @@ func DecodeElement(data []byte) (BencodeType, int, error) {
 
 	switch data[0] {
 	case 'i':
-		bcodeInt, bytesConsumed, err := DecodeInteger(data)
+		bCodeInt, bytesConsumed, err := DecodeInteger(data)
 		if err != nil {
 			return nil, 0, err
 		}
-		return bcodeInt, bytesConsumed, nil
+		return bCodeInt, bytesConsumed, nil
 
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		bcodeByteString, bytesConsumed, err := DecodeByteString(data)
+		bCodeByteString, bytesConsumed, err := DecodeByteString(data)
 		if err != nil {
 			return nil, 0, err
 		}
-		return bcodeByteString, bytesConsumed, nil
+		return bCodeByteString, bytesConsumed, nil
 
 	case 'l':
-		bcodeList, bytesConsumed, err := DecodeList(data)
+		bCodeList, bytesConsumed, err := DecodeList(data)
 		if err != nil {
 			return nil, 0, err
 		}
-		return bcodeList, bytesConsumed, nil
-		
+		return bCodeList, bytesConsumed, nil
+
+	case 'd':
+		bCodeDict, bytesConsumed, err := DecodeDict(data)
+		if err != nil {
+			return nil, 0, err
+		}
+		return bCodeDict, bytesConsumed, nil
 
 	default:
 		return nil, 0, errors.New("Data passed could not be decoded.")
@@ -86,7 +98,7 @@ func DecodeByteString(data []byte) (*BencodeByteString, int, error) {
 	}, contentEnd, nil
 }
 
-func DecodeInteger(data []byte) (*int64, int, error) {
+func DecodeInteger(data []byte) (*BencodeInteger, int, error) {
 	if len(data) < 3 {
 		return nil, 0, errors.New("Integer data too short.")
 	}
@@ -124,8 +136,8 @@ func DecodeInteger(data []byte) (*int64, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-
-	return &value, len(data[:endIndex+1]), nil
+	bCodeInt := BencodeInteger{Value: value}
+	return &bCodeInt, len(data[:endIndex+1]), nil
 }
 
 func DecodeList(data []byte) (*BencodeList, int, error) {
@@ -157,4 +169,64 @@ func DecodeList(data []byte) (*BencodeList, int, error) {
 	}
 
 	return nil, 0, errors.New("List missing end delimiter 'e'")
+}
+
+func DecodeDict(data []byte) (*BencodeDict, int, error) {
+	// d7:meaningi42e4:wiki7:bencodee
+
+	if data[0] != 'd' {
+		return nil, 0, errors.New("Dict missing starting delimiter 'd'")
+	}
+
+	if len(data) < 2 {
+		return nil, 0, errors.New("Dict data too short to decode.")
+	}
+
+	bcodeDict := BencodeDict{Pairs: make(map[BencodeByteString]BencodeType)}
+	index := 1
+	hasKey := false
+
+	var key BencodeByteString
+	for index < len(data) {
+		if data[index] == 'e' {
+			return &bcodeDict, index + 1, nil
+		}
+
+		fmt.Println(string(data[index:]))
+
+		if hasKey {
+			val, bytesConsumed, err := DecodeElement(data[index:])
+			if err != nil {
+				return nil, 0, err
+			}
+			bcodeDict.Pairs[key] = val
+
+			hasKey = false
+			index += bytesConsumed
+			continue
+		}
+
+		if !hasKey {
+			keyByteString, bytesConsumed, err := DecodeByteString(data[index:])
+			if err != nil {
+				return nil, 0, err
+			}
+			key = *keyByteString
+			hasKey = true
+			index += bytesConsumed
+		}
+	}
+	return nil, 0, errors.New("Dict missing end delimiter 'e'")
+}
+
+func (d BencodeDict) Get(contents string) (BencodeType, error) {
+	byteString := BencodeByteString{Length: int64(len(contents)), Contents: contents}
+
+	obj, ok := d.Pairs[byteString]
+
+	if !ok {
+		return nil, errors.New("Key Value pair does not exist in Bencode Dictionary.")
+	}
+
+	return obj, nil
 }
