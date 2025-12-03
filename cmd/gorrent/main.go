@@ -56,8 +56,7 @@ func main() {
 	//
 	// fmt.Printf("Decoded List Contents: %s\nBytes Consumed: %d\n", stringsList, byteCount)
 
-	dictString := "d7:meaningi42e4:wiki7:bencodee"
-
+	dictString := "d8:announce35:https://torrent.ubuntu.com/announce13:announce-listll35:https://torrent.ubuntu.com/announceel40:https://ipv6.torrent.ubuntu.com/announceee7:comment29:Ubuntu CD releases.ubuntu.com10:created by13:mktorrent 1.113:creation datei1759993240e4:infod6:lengthi5702520832e4:name30:ubuntu-25.10-desktop-amd64.isoee"
 	dictBytes := []byte(dictString)
 
 	decodedDict, numBytes, err := bencode.DecodeDict(dictBytes)

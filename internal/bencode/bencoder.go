@@ -2,7 +2,6 @@ package bencode
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"strconv"
 )
@@ -195,8 +194,6 @@ func DecodeDict(data []byte) (*BencodeDict, int, error) {
 		if data[index] == 'e' {
 			return &bcodeDict, index + 1, nil
 		}
-
-		fmt.Println(string(data[index:]))
 
 		if hasKey {
 			val, bytesConsumed, err := DecodeElement(data[index:])
